@@ -52,12 +52,13 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 	ctxlog.Debug(ctx, "start reconciling Build", namespace, request.Namespace, name, request.Name)
 
 	b := &build.Build{}
-	err := r.client.Get(ctx, request.NamespacedName, b)
-	if err != nil && !apierrors.IsNotFound(err) {
+	if err := r.client.Get(ctx, request.NamespacedName, b); err != nil {
+		if apierrors.IsNotFound(err) {
+			ctxlog.Debug(ctx, "finish reconciling build. build was not found", namespace, request.Namespace, name, request.Name)
+			return reconcile.Result{}, nil
+		}
+
 		return reconcile.Result{}, err
-	} else if apierrors.IsNotFound(err) {
-		ctxlog.Debug(ctx, "finish reconciling build. build was not found", namespace, request.Namespace, name, request.Name)
-		return reconcile.Result{}, nil
 	}
 
 	// Populate the status struct with default values
@@ -103,8 +104,7 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 
 	b.Status.Registered = build.ConditionStatusPtr(corev1.ConditionTrue)
 	b.Status.Message = pointer.String(build.AllValidationsSucceeded)
-	err = r.client.Status().Update(ctx, b)
-	if err != nil {
+	if err := r.client.Status().Update(ctx, b); err != nil {
 		return reconcile.Result{}, err
 	}
 

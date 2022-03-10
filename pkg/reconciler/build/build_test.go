@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -55,7 +56,7 @@ var _ = Describe("Reconcile Build", func() {
 		// Fake the client GET calls when reconciling,
 		// in order to get our Build CRD instance
 		client = &fakes.FakeClient{}
-		client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+		client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 			switch object := object.(type) {
 			case *build.Build:
 				buildSample.DeepCopyInto(object)
@@ -103,7 +104,7 @@ var _ = Describe("Reconcile Build", func() {
 
 				// Fake some client Get calls and ensure we populate all
 				// different resources we could get during reconciliation
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -155,7 +156,7 @@ var _ = Describe("Reconcile Build", func() {
 
 				// Fake some client Get calls and ensure we populate all
 				// different resources we could get during reconciliation
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -191,7 +192,7 @@ var _ = Describe("Reconcile Build", func() {
 			It("succeed when the secret exists", func() {
 				// Fake some client Get calls and ensure we populate all
 				// different resources we could get during reconciliation
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -237,7 +238,7 @@ var _ = Describe("Reconcile Build", func() {
 
 				// Fake some client Get calls and ensure we populate all
 				// different resources we could get during reconciliation
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -261,7 +262,7 @@ var _ = Describe("Reconcile Build", func() {
 
 				// Fake some client Get calls and ensure we populate all
 				// different resources we could get during reconciliation
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -305,7 +306,7 @@ var _ = Describe("Reconcile Build", func() {
 
 				// Fake some client Get calls and ensure we populate all
 				// different resources we could get during reconciliation
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -346,7 +347,7 @@ var _ = Describe("Reconcile Build", func() {
 			It("default to BuildStrategy and succeed if the strategy exists", func() {
 				// Fake some client Get calls and ensure we populate all
 				// different resources we could get during reconciliation
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -403,7 +404,7 @@ var _ = Describe("Reconcile Build", func() {
 
 				// Fake some client Get calls and ensure we populate all
 				// different resources we could get during reconciliation
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -428,7 +429,7 @@ var _ = Describe("Reconcile Build", func() {
 
 				// Fake some client Get calls and ensure we populate all
 				// different resources we could get during reconciliation
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -455,7 +456,7 @@ var _ = Describe("Reconcile Build", func() {
 
 				// Fake some client Get calls and ensure we populate all
 				// different resources we could get during reconciliation
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -485,7 +486,7 @@ var _ = Describe("Reconcile Build", func() {
 
 				// Fake some client Get calls and ensure we populate all
 				// different resources we could get during reconciliation
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)

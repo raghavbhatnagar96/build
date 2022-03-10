@@ -66,7 +66,6 @@ func NewReconciler(c *config.Config, mgr manager.Manager, ownerRef setOwnerRefer
 // Reconcile reads that state of the cluster for a Build object and makes changes based on the state read
 // and what is in the Build.Spec
 func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-
 	var buildRun *buildv1alpha1.BuildRun
 	var build *buildv1alpha1.Build
 
@@ -122,10 +121,8 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 	// for existing TaskRuns update the BuildRun Status, if there is no TaskRun, then create one
 	if getTaskRunErr != nil {
 		if apierrors.IsNotFound(getTaskRunErr) {
-
 			build = &buildv1alpha1.Build{}
-			err := resources.GetBuildObject(ctx, r.client, buildRun, build)
-			if err != nil {
+			if err := resources.GetBuildObject(ctx, r.client, buildRun, build); err != nil {
 				if !resources.IsClientStatusUpdateError(err) && buildRun.Status.IsFailed(buildv1alpha1.Succeeded) {
 					return reconcile.Result{}, nil
 				}
@@ -192,7 +189,7 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 			}
 
 			if updateBuildRunRequired {
-				if err = r.client.Update(ctx, buildRun); err != nil {
+				if err := r.client.Update(ctx, buildRun); err != nil {
 					return reconcile.Result{}, err
 				}
 				ctxlog.Info(ctx, fmt.Sprintf("successfully updated BuildRun %s", buildRun.Name), namespace, request.Namespace, name, request.Name)
@@ -201,7 +198,7 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 			// Set the Build spec in the BuildRun status
 			buildRun.Status.BuildSpec = &build.Spec
 			ctxlog.Info(ctx, "updating BuildRun status", namespace, request.Namespace, name, request.Name)
-			if err = r.client.Status().Update(ctx, buildRun); err != nil {
+			if err := r.client.Status().Update(ctx, buildRun); err != nil {
 				return reconcile.Result{}, err
 			}
 
@@ -406,10 +403,7 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 
 // GetBuildRunObject retrieves an existing BuildRun based on a name and namespace
 func (r *ReconcileBuildRun) GetBuildRunObject(ctx context.Context, objectName string, objectNS string, buildRun *buildv1alpha1.BuildRun) error {
-	if err := r.client.Get(ctx, types.NamespacedName{Name: objectName, Namespace: objectNS}, buildRun); err != nil {
-		return err
-	}
-	return nil
+	return r.client.Get(ctx, types.NamespacedName{Name: objectName, Namespace: objectNS}, buildRun)
 }
 
 // VerifyRequestName parse a Reconcile request name and looks for an associated BuildRun name

@@ -61,7 +61,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 
 	// Basic stubs that simulate the output of all client calls in the Reconciler logic.
 	// This applies only for a Build and BuildRun client get.
-	getClientStub := func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+	getClientStub := func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 		switch object := object.(type) {
 		case *build.Build:
 			buildSample.DeepCopyInto(object)
@@ -362,7 +362,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 				cancelPatchCalled := false
 				cancelUpdateCalled := false
 				// override the updateClientStub so we can see the update on the BuildRun condition
-				stubUpdateCalls := func(context context.Context, object crc.Object, opts ...crc.UpdateOption) error {
+				stubUpdateCalls := func(_ context.Context, object crc.Object, opts ...crc.UpdateOption) error {
 					switch v := object.(type) {
 					case *build.BuildRun:
 						c := v.Status.GetCondition(build.Succeeded)
@@ -374,7 +374,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 					return nil
 				}
 				statusWriter.UpdateCalls(stubUpdateCalls)
-				stubPatchCalls := func(context context.Context, object crc.Object, patch crc.Patch, opts ...crc.PatchOption) error {
+				stubPatchCalls := func(_ context.Context, object crc.Object, patch crc.Patch, opts ...crc.PatchOption) error {
 					switch v := object.(type) {
 					case *v1beta1.TaskRun:
 						if v.Name == taskRunSample.Name {
@@ -547,7 +547,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 
 				cancelUpdateCalled := false
 				// override the updateClientStub so we can see the update on the BuildRun condition
-				stubUpdateCalls := func(context context.Context, object crc.Object, opts ...crc.UpdateOption) error {
+				stubUpdateCalls := func(_ context.Context, object crc.Object, opts ...crc.UpdateOption) error {
 					switch v := object.(type) {
 					case *build.BuildRun:
 						c := v.Status.GetCondition(build.Succeeded)
@@ -572,7 +572,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 
 				// override the initial getClientStub, and generate a new stub
 				// that only contains a Buildrun
-				stubGetCalls := func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				stubGetCalls := func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						return k8serrors.NewNotFound(schema.GroupResource{}, nn.Name)
@@ -594,7 +594,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 
 				// override the initial getClientStub, and generate a new stub
 				// that only contains a BuildRun
-				stubGetCalls := func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				stubGetCalls := func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						return k8serrors.NewNotFound(schema.GroupResource{}, nn.Name)
@@ -622,10 +622,9 @@ var _ = Describe("Reconcile BuildRun", func() {
 			})
 
 			It("fails on a TaskRun creation due to service account not found", func() {
-
 				// override the initial getClientStub, and generate a new stub
 				// that only contains a Build and Buildrun, none TaskRun
-				stubGetCalls := func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				stubGetCalls := func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -661,12 +660,12 @@ var _ = Describe("Reconcile BuildRun", func() {
 				Expect(client.GetCallCount()).To(Equal(4))
 				Expect(client.StatusCallCount()).To(Equal(2))
 			})
-			It("fails on a TaskRun creation due to issues when retrieving the service account", func() {
 
+			It("fails on a TaskRun creation due to issues when retrieving the service account", func() {
 				// override the initial getClientStub, and generate a new stub
 				// that only contains a Build, BuildRun and a random error when
 				// retrieving a service account
-				stubGetCalls := func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				stubGetCalls := func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -691,7 +690,6 @@ var _ = Describe("Reconcile BuildRun", func() {
 			})
 
 			It("fails on a TaskRun creation due to namespaced buildstrategy not found", func() {
-
 				// override the Build to use a namespaced BuildStrategy
 				buildSample = ctl.DefaultBuild(buildName, strategyName, build.NamespacedBuildStrategyKind)
 
@@ -725,12 +723,11 @@ var _ = Describe("Reconcile BuildRun", func() {
 			})
 
 			It("fails on a TaskRun creation due to issues when retrieving the buildstrategy", func() {
-
 				// override the Build to use a namespaced BuildStrategy
 				buildSample = ctl.DefaultBuild(buildName, strategyName, build.NamespacedBuildStrategyKind)
 
 				// stub get calls so that on namespaced strategy retrieval, we throw a random error
-				stubGetCalls := func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				stubGetCalls := func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -793,12 +790,11 @@ var _ = Describe("Reconcile BuildRun", func() {
 			})
 
 			It("fails on a TaskRun creation due to issues when retrieving the clusterbuildstrategy", func() {
-
 				// override the Build to use a namespaced BuildStrategy
 				buildSample = ctl.DefaultBuild(buildName, strategyName, build.ClusterBuildStrategyKind)
 
 				// stub get calls so that on cluster strategy retrieval, we throw a random error
-				stubGetCalls := func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				stubGetCalls := func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -973,7 +969,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 				)
 
 				// Stub the create calls for a TaskRun
-				client.CreateCalls(func(context context.Context, object crc.Object, _ ...crc.CreateOption) error {
+				client.CreateCalls(func(_ context.Context, object crc.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
 					case *v1beta1.TaskRun:
 						ctl.DefaultTaskRunWithStatus(taskRunName, buildRunName, ns, corev1.ConditionTrue, "Succeeded").DeepCopyInto(object)
@@ -1002,7 +998,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 				)
 
 				// Stub the create calls for a TaskRun
-				client.CreateCalls(func(context context.Context, object crc.Object, _ ...crc.CreateOption) error {
+				client.CreateCalls(func(_ context.Context, object crc.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
 					case *v1beta1.TaskRun:
 						ctl.DefaultTaskRunWithStatus(taskRunName, buildRunName, ns, corev1.ConditionTrue, "Succeeded").DeepCopyInto(object)
@@ -1013,10 +1009,11 @@ var _ = Describe("Reconcile BuildRun", func() {
 				_, err := reconciler.Reconcile(context.TODO(), buildRunRequest)
 				Expect(err).ToNot(HaveOccurred())
 			})
+
 			It("stops creation when a FALSE registered status of the build occurs", func() {
 				// Init the Build with registered status false
 				buildSample = ctl.DefaultBuildWithFalseRegistered(buildName, strategyName, build.ClusterBuildStrategyKind)
-				getClientStub := func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+				getClientStub := func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *build.Build:
 						buildSample.DeepCopyInto(object)
@@ -1084,7 +1081,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 				)
 
 				// Stub the create calls for a TaskRun
-				client.CreateCalls(func(context context.Context, object crc.Object, _ ...crc.CreateOption) error {
+				client.CreateCalls(func(_ context.Context, object crc.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
 					case *v1beta1.TaskRun:
 						ctl.DefaultTaskRunWithStatus(taskRunName, buildRunName, ns, corev1.ConditionTrue, "Succeeded").DeepCopyInto(object)
@@ -1099,7 +1096,6 @@ var _ = Describe("Reconcile BuildRun", func() {
 			})
 
 			It("updates Build with error when BuildRun is already owned", func() {
-
 				fakeOwnerName := "fakeOwner"
 
 				// Set the build spec
@@ -1233,8 +1229,8 @@ var _ = Describe("Reconcile BuildRun", func() {
 				_, err := reconciler.Reconcile(context.TODO(), buildRunRequest)
 				Expect(err).To(BeNil())
 				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
-
 			})
+
 			It("fails when the name is blank using valueFrom", func() {
 				buildRunSample.Spec.Env = []corev1.EnvVar{
 					{
@@ -1253,8 +1249,8 @@ var _ = Describe("Reconcile BuildRun", func() {
 				_, err := reconciler.Reconcile(context.TODO(), buildRunRequest)
 				Expect(err).To(BeNil())
 				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
-
 			})
+
 			It("fails when both value and valueFrom are specified", func() {
 				buildRunSample.Spec.Env = []corev1.EnvVar{
 					{
@@ -1274,8 +1270,8 @@ var _ = Describe("Reconcile BuildRun", func() {
 				_, err := reconciler.Reconcile(context.TODO(), buildRunRequest)
 				Expect(err).To(BeNil())
 				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
-
 			})
+
 			It("succeeds with compliant env var using Value", func() {
 				buildRunSample.Spec.Env = []corev1.EnvVar{
 					{
@@ -1290,8 +1286,8 @@ var _ = Describe("Reconcile BuildRun", func() {
 				_, err := reconciler.Reconcile(context.TODO(), buildRunRequest)
 				Expect(err).To(BeNil())
 				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
-
 			})
+
 			It("succeeds with compliant env var using ValueFrom", func() {
 				buildRunSample.Spec.Env = []corev1.EnvVar{
 					{
@@ -1310,7 +1306,6 @@ var _ = Describe("Reconcile BuildRun", func() {
 				_, err := reconciler.Reconcile(context.TODO(), buildRunRequest)
 				Expect(err).To(BeNil())
 				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
-
 			})
 		})
 	})

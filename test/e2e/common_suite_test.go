@@ -15,7 +15,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 
 	core "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
@@ -219,7 +218,7 @@ func (b buildPrototype) Create() (build *buildv1alpha1.Build, err error) {
 			return false, err
 		}
 
-		return build.Status.Registered != nil && *build.Status.Registered == v1.ConditionTrue, nil
+		return build.Status.Registered != nil && *build.Status.Registered == core.ConditionTrue, nil
 	})
 
 	return

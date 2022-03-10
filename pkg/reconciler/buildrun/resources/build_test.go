@@ -10,19 +10,20 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	build "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
-	"github.com/shipwright-io/build/pkg/controller/fakes"
-	"github.com/shipwright-io/build/pkg/reconciler/buildrun/resources"
-	"github.com/shipwright-io/build/test"
+
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
+
+	build "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
+	"github.com/shipwright-io/build/pkg/controller/fakes"
+	"github.com/shipwright-io/build/pkg/reconciler/buildrun/resources"
+	"github.com/shipwright-io/build/test"
 )
 
 var _ = Describe("Build Resource", func() {
-
 	var (
 		client    *fakes.FakeClient
 		ctl       test.Catalog
@@ -51,7 +52,7 @@ var _ = Describe("Build Resource", func() {
 			buildSample := ctl.DefaultBuild(buildName, "foostrategy", build.ClusterBuildStrategyKind)
 
 			// stub a GET API call with buildSample contents
-			getClientStub := func(context context.Context, nn types.NamespacedName, object crc.Object) error {
+			getClientStub := func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 				switch object := object.(type) {
 				case *build.Build:
 					buildSample.DeepCopyInto(object)
@@ -66,21 +67,21 @@ var _ = Describe("Build Resource", func() {
 			buildObject := &build.Build{}
 			Expect(resources.GetBuildObject(context.TODO(), client, buildRun, buildObject)).To(BeNil())
 		})
+
 		It("should not retrieve a missing build object when missing", func() {
-			// stub a GET API call with buildSample contents that returns "not found"
-			getClientStub := func(context context.Context, nn types.NamespacedName, object crc.Object) error {
-				switch object.(type) {
-				case *build.Build:
-					return errors.New("not found")
-				}
+			// stub a GET API call that returns "not found"
+			client.GetCalls(func(_ context.Context, nn types.NamespacedName, object crc.Object) error {
 				return k8serrors.NewNotFound(schema.GroupResource{}, nn.Name)
-			}
-			// fake the calls with the above stub
-			client.GetCalls(getClientStub)
+			})
+
+			client.StatusCalls(func() crc.StatusWriter {
+				return &fakes.FakeStatusWriter{}
+			})
 
 			build := &build.Build{}
 			Expect(resources.GetBuildObject(context.TODO(), client, buildRun, build)).ToNot(BeNil())
 		})
+
 		It("should be able to verify valid ownerships", func() {
 			managingController := true
 
@@ -104,6 +105,7 @@ var _ = Describe("Build Resource", func() {
 			// Assert that our Build is owned by an owner
 			Expect(resources.IsOwnedByBuild(buildSample, fakeOwnerRef)).To(BeTrue())
 		})
+
 		It("should be able to verify invalid ownerships", func() {
 			managingController := true
 
