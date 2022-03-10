@@ -234,7 +234,7 @@ func (b *buildRunPrototype) Name(name string) *buildRunPrototype {
 }
 
 func (b *buildRunPrototype) ForBuild(build *buildv1alpha1.Build) *buildRunPrototype {
-	b.buildRun.Spec.BuildRef = buildv1alpha1.BuildRef{Name: build.Name}
+	b.buildRun.Spec.BuildRef = &buildv1alpha1.BuildRef{Name: build.Name}
 	b.buildRun.ObjectMeta.Namespace = build.Namespace
 	return b
 }

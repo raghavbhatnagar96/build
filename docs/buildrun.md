@@ -56,9 +56,10 @@ The `BuildRun` definition supports the following fields:
   - [`apiVersion`](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields) - Specifies the API version, for example `shipwright.io/v1alpha1`.
   - [`kind`](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields) - Specifies the Kind type, for example `BuildRun`.
   - [`metadata`](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields) - Metadata that identify the CRD instance, for example the name of the `BuildRun`.
-  - `spec.buildRef` - Specifies an existing `Build` resource instance to use.
 
 - Optional:
+  - `spec.buildRef` - Specifies an existing `Build` resource instance to use.
+  - `spec.buildSpec` - Specified an embedded (transient) Build resource to use.
   - `spec.serviceAccount` - Refers to the SA to use when building the image. (_defaults to the `default` SA_)
   - `spec.timeout` - Defines a custom timeout. The value needs to be parsable by [ParseDuration](https://golang.org/pkg/time/#ParseDuration), for example `5m`. The value overwrites the value that is defined in the `Build`.
   - `spec.paramValues` - Refers to a name-value(s) list to specify values for `parameters` defined in the `BuildStrategy`. This overwrites values defined with the same name in the Build.

@@ -23,7 +23,9 @@ const (
 // BuildRunSpec defines the desired state of BuildRun
 type BuildRunSpec struct {
 	// BuildRef refers to the Build
-	BuildRef BuildRef `json:"buildRef"`
+	//
+	// +optional
+	BuildRef *BuildRef `json:"buildRef"`
 
 	// Sources slice of BuildSource, defining external build artifacts complementary to VCS
 	// (`.spec.source`) data.
