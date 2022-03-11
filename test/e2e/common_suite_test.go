@@ -224,6 +224,11 @@ func (b buildPrototype) Create() (build *buildv1alpha1.Build, err error) {
 	return
 }
 
+// BuildSpec returns the BuildSpec of this Build (no cluster resource is created)
+func (b buildPrototype) BuildSpec() (build *buildv1alpha1.BuildSpec) {
+	return &b.build.Spec
+}
+
 func NewBuildRunPrototype() *buildRunPrototype {
 	return &buildRunPrototype{buildRun: buildv1alpha1.BuildRun{}}
 }
@@ -233,9 +238,19 @@ func (b *buildRunPrototype) Name(name string) *buildRunPrototype {
 	return b
 }
 
+func (b *buildRunPrototype) Namespace(namespace string) *buildRunPrototype {
+	b.buildRun.Namespace = namespace
+	return b
+}
+
 func (b *buildRunPrototype) ForBuild(build *buildv1alpha1.Build) *buildRunPrototype {
 	b.buildRun.Spec.BuildRef = &buildv1alpha1.BuildRef{Name: build.Name}
 	b.buildRun.ObjectMeta.Namespace = build.Namespace
+	return b
+}
+
+func (b *buildRunPrototype) WithBuildSpec(buildSpec *buildv1alpha1.BuildSpec) *buildRunPrototype {
+	b.buildRun.Spec.BuildSpec = buildSpec
 	return b
 }
 
