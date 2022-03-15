@@ -22,6 +22,17 @@ import (
 	"github.com/shipwright-io/build/pkg/validate"
 )
 
+// build a list of current validation types
+var validationTypes = [...]string{
+	validate.OwnerReferences,
+	validate.SourceURL,
+	validate.Secrets,
+	validate.Strategies,
+	validate.Sources,
+	validate.BuildName,
+	validate.Envs,
+}
+
 // ReconcileBuild reconciles a Build object
 type ReconcileBuild struct {
 	// This client, initialized using mgr.Client() above, is a split client
@@ -65,17 +76,6 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 	b.Status.Registered = build.ConditionStatusPtr(corev1.ConditionFalse)
 	b.Status.Reason = build.BuildReasonPtr(build.SucceedStatus)
 
-	// build a list of current validation types
-	validationTypes := []string{
-		validate.OwnerReferences,
-		validate.SourceURL,
-		validate.Secrets,
-		validate.Strategies,
-		validate.Sources,
-		validate.BuildName,
-		validate.Envs,
-	}
-
 	// trigger all current validations
 	for _, validationType := range validationTypes {
 		v, err := validate.NewValidation(validationType, b, r.client, r.scheme)
@@ -90,13 +90,18 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 			if validationType == validate.Secrets || validationType == validate.Strategies {
 				return reconcile.Result{}, err
 			}
+
 			if validationType == validate.OwnerReferences {
 				// we do not want to bail out here if the owerreference validation fails, we ignore this error on purpose
 				// In case we just created the Build, we want the Build reconcile logic to continue, in order to
 				// validate the Build references ( e.g secrets, strategies )
-				ctxlog.Info(ctx, "unexpected error during ownership reference validation", namespace, request.Namespace, name, request.Name, "error", err)
+				ctxlog.Info(ctx, "unexpected error during ownership reference validation",
+					namespace, b.Namespace,
+					name, b.Name,
+					"error", err)
 			}
 		}
+
 		if b.Status.Reason == nil || *b.Status.Reason != build.SucceedStatus {
 			if err := r.client.Status().Update(ctx, b); err != nil {
 				return reconcile.Result{}, err

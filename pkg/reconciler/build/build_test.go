@@ -593,5 +593,25 @@ var _ = Describe("Reconcile Build", func() {
 
 			})
 		})
+
+		Context("when build object is not in the cluster (anymore)", func() {
+			It("should finish reconciling when the build cannot be found", func() {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, o crc.Object) error {
+					return errors.NewNotFound(build.Resource("build"), nn.Name)
+				})
+
+				_, err := reconciler.Reconcile(context.TODO(), request)
+				Expect(err).To(BeNil())
+			})
+
+			It("should finish reconciling with an error when looking up the build fails with an unexpected error", func() {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, o crc.Object) error {
+					return errors.NewBadRequest("foobar")
+				})
+
+				_, err := reconciler.Reconcile(context.TODO(), request)
+				Expect(err).ToNot(BeNil())
+			})
+		})
 	})
 })
