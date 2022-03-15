@@ -98,7 +98,11 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 			}
 		}
 		if b.Status.Reason == nil || *b.Status.Reason != build.SucceedStatus {
-			return r.UpdateBuildStatusAndRetreat(ctx, b)
+			if err := r.client.Status().Update(ctx, b); err != nil {
+				return reconcile.Result{}, err
+			}
+
+			return reconcile.Result{}, nil
 		}
 	}
 
@@ -112,15 +116,5 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 	buildmetrics.BuildCountInc(b.Spec.Strategy.Name, b.Namespace, b.Name)
 
 	ctxlog.Debug(ctx, "finishing reconciling Build", namespace, request.Namespace, name, request.Name)
-	return reconcile.Result{}, nil
-}
-
-// UpdateBuildStatusAndRetreat returns an error if an update fails, this should force
-// a new reconcile until the API call succeeds. If return is nil, no further reconciliations
-// will take place
-func (r *ReconcileBuild) UpdateBuildStatusAndRetreat(ctx context.Context, b *build.Build) (reconcile.Result, error) {
-	if err := r.client.Status().Update(ctx, b); err != nil {
-		return reconcile.Result{}, err
-	}
 	return reconcile.Result{}, nil
 }
