@@ -6,11 +6,11 @@ package resources_test
 
 import (
 	"context"
-	"errors"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -25,14 +25,13 @@ import (
 
 var _ = Describe("Build Resource", func() {
 	var (
-		client    *fakes.FakeClient
-		ctl       test.Catalog
-		buildName string
+		client *fakes.FakeClient
+		ctl    test.Catalog
 	)
 
 	Context("Operating on Build resources", func() {
 		// init vars
-		buildName = "foobuild"
+		buildName := "foobuild"
 		client = &fakes.FakeClient{}
 		buildRun := &build.BuildRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -126,6 +125,32 @@ var _ = Describe("Build Resource", func() {
 			}
 			// Assert that our Build is not owned by an owner
 			Expect(resources.IsOwnedByBuild(buildSample, fakeOwnerRef)).To(BeFalse())
+		})
+	})
+
+	Context("Operating on embedded Build(Spec) resources", func() {
+		client = &fakes.FakeClient{}
+		buildRun := &build.BuildRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: build.BuildRunSpec{
+				BuildSpec: &build.BuildSpec{
+					Env: []v1.EnvVar{{Name: "foo", Value: "bar"}},
+				},
+			},
+		}
+
+		It("should be able to retrieve an embedded build object if it exists", func() {
+			build := &build.Build{}
+			err := resources.GetBuildObject(context.TODO(), client, buildRun, build)
+
+			Expect(err).To(BeNil())
+			Expect(build).ToNot(BeNil())
+			Expect(build.Spec).ToNot(BeNil())
+			Expect(build.Spec.Env).ToNot(BeNil())
+			Expect(build.Spec.Env).To(ContainElement(v1.EnvVar{Name: "foo", Value: "bar"}))
 		})
 	})
 })
