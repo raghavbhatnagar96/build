@@ -333,7 +333,7 @@ func buildRunTestData(ns string, identifier string, filePath string) (*buildv1al
 
 	buildRun.SetNamespace(ns)
 	buildRun.SetName(identifier)
-	buildRun.Spec.BuildRef.Name = identifier
+	buildRun.Spec.BuildRef = &buildv1alpha1.BuildRef{Name: identifier}
 
 	serviceAccountName := os.Getenv(EnvVarServiceAccountName)
 	if serviceAccountName == "generated" {

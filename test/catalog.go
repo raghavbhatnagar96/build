@@ -1028,14 +1028,14 @@ func (c *Catalog) LoadBuildRunFromBytes(d []byte) (*build.BuildRun, error) {
 }
 
 // LoadBRWithNameAndRef returns a populated BuildRun with a name and a referenced Build
-func (c *Catalog) LoadBRWithNameAndRef(name string, buildRef string, d []byte) (*build.BuildRun, error) {
+func (c *Catalog) LoadBRWithNameAndRef(name string, buildName string, d []byte) (*build.BuildRun, error) {
 	b := &build.BuildRun{}
 	err := yaml.Unmarshal(d, b)
 	if err != nil {
 		return nil, err
 	}
 	b.Name = name
-	b.Spec.BuildRef.Name = buildRef
+	b.Spec.BuildRef = &build.BuildRef{Name: buildName}
 	return b, nil
 }
 

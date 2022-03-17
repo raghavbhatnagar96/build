@@ -364,3 +364,14 @@ func (brs *BuildRunStatus) SetCondition(condition *Condition) {
 		brs.Conditions = append(brs.Conditions, *condition)
 	}
 }
+
+// BuildName returns the name of the associated build, which can be a referened
+// build resource or an embedded build specification
+func (buildrunSpec *BuildRunSpec) BuildName() string {
+	if buildrunSpec.BuildRef != nil {
+		return buildrunSpec.BuildRef.Name
+	}
+
+	// Only BuildRuns with a BuildRef can actually return a proper Build name
+	return ""
+}

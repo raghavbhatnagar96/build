@@ -130,7 +130,7 @@ func retrieveBuildAndBuildRun(testBuild *utils.TestBuild, namespace string, buil
 		return nil, nil, err
 	}
 
-	buildName := buildRun.Spec.BuildRef.Name
+	buildName := buildRun.Spec.BuildName()
 
 	build, err := testBuild.LookupBuild(types.NamespacedName{Name: buildName, Namespace: namespace})
 	if err != nil {
