@@ -97,16 +97,30 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 		return reconcile.Result{}, nil
 	}
 
-	// Validating buildrun name is a valid label value
-	if errs := validation.IsValidLabelValue(buildRun.Name); len(errs) > 0 {
-		// stop reconciling and mark the BuildRun as Failed
-		return reconcile.Result{}, resources.UpdateConditionWithFalseStatus(
-			ctx,
-			r.client,
-			buildRun,
-			strings.Join(errs, ", "),
-			resources.BuildRunNameInvalid,
-		)
+	// Skip validation in case buildrun could not be found, otherwise validate it
+	if getBuildRunErr == nil {
+		// Validating buildrun name is a valid label value
+		if errs := validation.IsValidLabelValue(buildRun.Name); len(errs) > 0 {
+			// stop reconciling and mark the BuildRun as Failed
+			return reconcile.Result{}, resources.UpdateConditionWithFalseStatus(
+				ctx,
+				r.client,
+				buildRun,
+				strings.Join(errs, ", "),
+				resources.BuildRunNameInvalid,
+			)
+		}
+
+		// Validate BuildRun for disallowed field combinations (could technically be also done in a validating webhook)
+		if reason, message := validate.BuildRunFields(buildRun); reason != "" {
+			return reconcile.Result{}, resources.UpdateConditionWithFalseStatus(
+				ctx,
+				r.client,
+				buildRun,
+				message,
+				reason,
+			)
+		}
 	}
 
 	// if this is a build run event after we've set the task run ref, get the task run using the task run name stored in the build run
@@ -128,9 +142,48 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 
 			// Validate if the Build was successfully registered
 			if build.Status.Registered == nil || *build.Status.Registered == "" {
-				err := fmt.Errorf("the Build is not yet validated, build: %s", build.Name)
+				switch {
+				// When the build is referenced by name, it means the build is
+				// an actual resource in the cluster and _should_ have been
+				// validated and registered by now ...
 				// reconcile again until it gets a registration value
-				return reconcile.Result{}, err
+				case buildRun.Spec.BuildRef != nil:
+					return reconcile.Result{}, fmt.Errorf("the Build is not yet validated, build: %s", build.Name)
+
+				// When the build(spec) is embedded in the buildrun, the now
+				// transient/volatile build resource needs to be validated first
+				case buildRun.Spec.BuildSpec != nil:
+					err := validate.All(ctx,
+						validate.NewSourceURL(r.client, build),
+						validate.NewCredentials(r.client, build),
+						validate.NewStrategies(r.client, build),
+						validate.NewSourcesRef(build),
+						validate.NewBuildName(build),
+						validate.NewEnv(build),
+					)
+
+					// an internal/technical error during validation happened
+					if err != nil {
+						return reconcile.Result{}, err
+					}
+
+					// one or more of the validations failed
+					if build.Status.Reason != nil {
+						return reconcile.Result{},
+							resources.UpdateConditionWithFalseStatus(
+								ctx,
+								r.client,
+								buildRun,
+								*build.Status.Message,
+								resources.ConditionBuildRegistrationFailed,
+							)
+					}
+
+					// mark transient build as "registered" and validated
+					build.Status.Registered = buildv1alpha1.ConditionStatusPtr(corev1.ConditionTrue)
+					build.Status.Reason = buildv1alpha1.BuildReasonPtr(buildv1alpha1.SucceedStatus)
+					build.Status.Message = pointer.String(buildv1alpha1.AllValidationsSucceeded)
+				}
 			}
 
 			if *build.Status.Registered != corev1.ConditionTrue {
@@ -176,12 +229,15 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 				updateBuildRunRequired = true
 			}
 
-			buildGeneration := strconv.FormatInt(build.Generation, 10)
-			if buildRun.GetLabels()[buildv1alpha1.LabelBuild] != build.Name || buildRun.GetLabels()[buildv1alpha1.LabelBuildGeneration] != buildGeneration {
-				buildRun.Labels[buildv1alpha1.LabelBuild] = build.Name
-				buildRun.Labels[buildv1alpha1.LabelBuildGeneration] = buildGeneration
-				ctxlog.Info(ctx, "updating BuildRun labels", namespace, request.Namespace, name, request.Name)
-				updateBuildRunRequired = true
+			// Add missing build name and generation labels to BuildRun (unless it is an embedded build)
+			if build.Name != "" && build.Generation != 0 {
+				buildGeneration := strconv.FormatInt(build.Generation, 10)
+				if buildRun.GetLabels()[buildv1alpha1.LabelBuild] != build.Name || buildRun.GetLabels()[buildv1alpha1.LabelBuildGeneration] != buildGeneration {
+					buildRun.Labels[buildv1alpha1.LabelBuild] = build.Name
+					buildRun.Labels[buildv1alpha1.LabelBuildGeneration] = buildGeneration
+					ctxlog.Info(ctx, "updating BuildRun labels", namespace, request.Namespace, name, request.Name)
+					updateBuildRunRequired = true
+				}
 			}
 
 			if updateBuildRunRequired {
