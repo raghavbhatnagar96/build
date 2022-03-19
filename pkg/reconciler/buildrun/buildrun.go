@@ -100,17 +100,13 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 	// Validating buildrun name is a valid label value
 	if errs := validation.IsValidLabelValue(buildRun.Name); len(errs) > 0 {
 		// stop reconciling and mark the BuildRun as Failed
-		if updateErr := resources.UpdateConditionWithFalseStatus(
+		return reconcile.Result{}, resources.UpdateConditionWithFalseStatus(
 			ctx,
 			r.client,
 			buildRun,
 			strings.Join(errs, ", "),
 			resources.BuildRunNameInvalid,
-		); updateErr != nil {
-			return reconcile.Result{}, updateErr
-		}
-
-		return reconcile.Result{}, nil
+		)
 	}
 
 	// if this is a build run event after we've set the task run ref, get the task run using the task run name stored in the build run

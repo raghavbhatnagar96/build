@@ -1212,6 +1212,58 @@ var _ = Describe("Reconcile BuildRun", func() {
 				Expect(err).ToNot(BeNil())
 				Expect(resources.IsClientStatusUpdateError(err)).To(BeTrue())
 			})
+
+			It("should mark buildrun succeeded false when BuildRun name is too long", func() {
+				buildRunSample = ctl.BuildRunWithoutSA("f"+strings.Repeat("o", 63)+"bar", buildName)
+
+				client.GetCalls(ctl.StubBuildRun(buildRunSample))
+				statusWriter.UpdateCalls(func(_ context.Context, o crc.Object, _ ...crc.UpdateOption) error {
+					Expect(o).To(BeAssignableToTypeOf(&build.BuildRun{}))
+					switch buildRun := o.(type) {
+					case *build.BuildRun:
+						condition := buildRun.Status.GetCondition(build.Succeeded)
+						Expect(condition.Reason).To(Equal(resources.BuildRunNameInvalid))
+						Expect(condition.Message).To(Equal("must be no more than 63 characters"))
+					}
+
+					return nil
+				})
+
+				_, err := reconciler.Reconcile(context.TODO(), buildRunRequest)
+				Expect(err).To(BeNil())
+			})
+
+			It("should mark buildrun succeeded false when BuildRun name contains illegal runes", func() {
+				buildRunSample = ctl.BuildRunWithoutSA("fööbar", buildName)
+
+				client.GetCalls(ctl.StubBuildRun(buildRunSample))
+				statusWriter.UpdateCalls(func(_ context.Context, o crc.Object, _ ...crc.UpdateOption) error {
+					Expect(o).To(BeAssignableToTypeOf(&build.BuildRun{}))
+					switch buildRun := o.(type) {
+					case *build.BuildRun:
+						condition := buildRun.Status.GetCondition(build.Succeeded)
+						Expect(condition.Reason).To(Equal(resources.BuildRunNameInvalid))
+						Expect(condition.Message).To(ContainSubstring("a valid label must be an empty string or consist of alphanumeric characters"))
+					}
+
+					return nil
+				})
+
+				_, err := reconciler.Reconcile(context.TODO(), buildRunRequest)
+				Expect(err).To(BeNil())
+			})
+
+			It("should fail the reconcile if an update call failed during a validation error", func() {
+				buildRunSample = ctl.BuildRunWithoutSA("fööbar", buildName)
+
+				client.GetCalls(ctl.StubBuildRun(buildRunSample))
+				statusWriter.UpdateCalls(func(_ context.Context, _ crc.Object, _ ...crc.UpdateOption) error {
+					return k8serrors.NewInternalError(fmt.Errorf("something bad happened"))
+				})
+
+				_, err := reconciler.Reconcile(context.TODO(), buildRunRequest)
+				Expect(err).To(HaveOccurred())
+			})
 		})
 
 		Context("when environment variables are specified", func() {
