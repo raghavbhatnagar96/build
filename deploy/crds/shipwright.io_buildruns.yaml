@@ -305,6 +305,20 @@ spec:
                   - name
                   type: object
                 type: array
+              retention:
+                description: Contains information about retention params
+                properties:
+                  ttlAfterFailed:
+                    description: TTLAfterFailed defines the maximum duration of time
+                      the failed buildrun should exist.
+                    format: duration
+                    type: string
+                  ttlAfterSucceeded:
+                    description: TTLAfterSucceeded defines the maximum duration of
+                      time the succeeded buildrun should exist.
+                    format: duration
+                    type: string
+                type: object
               serviceAccount:
                 description: ServiceAccount refers to the kubernetes serviceaccount
                   which is used for resource control. Default serviceaccount will
@@ -654,13 +668,13 @@ spec:
                         minimum: 1
                         type: integer
                       ttlAfterFailed:
-                        description: TtlAfterFailed defines the maximum duration of
+                        description: TTLAfterFailed defines the maximum duration of
                           time the failed buildrun should exist.
                         format: duration
                         type: string
                       ttlAfterSucceeded:
-                        description: TtlAfterFailed defines the maximum duration of
-                          time the succeeded buildrun should exist.
+                        description: TTLAfterSucceeded defines the maximum duration
+                          of time the succeeded buildrun should exist.
                         format: duration
                         type: string
                     type: object

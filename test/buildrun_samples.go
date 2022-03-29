@@ -212,3 +212,18 @@ spec:
   buildRef:
     name: build-retention-ttl
 `
+
+// MinimalBuildRunRetention defines a minimal BuildRun
+// with a reference used to test retention fields
+const MinimalBuildRunRetentionTTL = `
+apiVersion: shipwright.io/v1alpha1
+kind: BuildRun
+metadata:
+  name: buidrun-retention-ttl
+spec:
+  buildRef:
+    name: build-retention-ttl
+  retention:
+    ttlAfterFailed: 5s
+    ttlAfterSucceeded: 5s
+`

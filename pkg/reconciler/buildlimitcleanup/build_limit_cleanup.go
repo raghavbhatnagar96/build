@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package build_limit_cleanup
+package buildlimitcleanup
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -24,18 +23,14 @@ import (
 type ReconcileBuild struct {
 	/* This client, initialized using mgr.Client() above, is a split client
 	   that reads objects from the cache and writes to the apiserver */
-	config                *config.Config
-	client                client.Client
-	scheme                *runtime.Scheme
-	setOwnerReferenceFunc setOwnerReferenceFunc
+	config *config.Config
+	client client.Client
 }
 
-func NewReconciler(c *config.Config, mgr manager.Manager, ownerRef setOwnerReferenceFunc) reconcile.Reconciler {
+func NewReconciler(c *config.Config, mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileBuild{
-		config:                c,
-		client:                mgr.GetClient(),
-		scheme:                mgr.GetScheme(),
-		setOwnerReferenceFunc: ownerRef,
+		config: c,
+		client: mgr.GetClient(),
 	}
 }
 
@@ -56,7 +51,14 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 			ctxlog.Debug(ctx, "Finish reconciling build-limit-cleanup. Build was not found", namespace, request.Namespace, name, request.Name)
 			return reconcile.Result{}, nil
 		}
-		return reconcile.Result{}, err
+		if b.Spec.Retention != nil && (b.Spec.Retention.SucceededLimit != nil || b.Spec.Retention.FailedLimit != nil) {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
+	if b.Spec.Retention == nil {
+		return reconcile.Result{}, nil
 	}
 
 	lbls := map[string]string{
@@ -91,18 +93,15 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 	if b.Spec.Retention.SucceededLimit != nil {
 		if len(buildRunSucceeded) > int(*b.Spec.Retention.SucceededLimit) {
 			sort.Slice(buildRunSucceeded, func(i, j int) bool {
-				return buildRunSucceeded[i].Status.CompletionTime.Before(buildRunSucceeded[j].Status.CompletionTime)
+				return buildRunSucceeded[i].ObjectMeta.CreationTimestamp.Before(&buildRunSucceeded[j].ObjectMeta.CreationTimestamp)
 			})
 			lenOfList := len(buildRunSucceeded)
-			for i := 0; lenOfList-i > int(*b.Spec.Retention.SucceededLimit); i += 1 {
+			for i := 0; lenOfList-i > int(*b.Spec.Retention.SucceededLimit); i++ {
 				ctxlog.Info(ctx, "Deleting succeeded buildrun as cleanup limit has been reached.", namespace, request.Namespace, name, buildRunSucceeded[i].Name)
-				deleteBuildRunErr := r.client.Delete(ctx, &buildRunSucceeded[i], &client.DeleteOptions{})
-				if deleteBuildRunErr != nil {
-					if apierrors.IsNotFound(deleteBuildRunErr) {
-						return reconcile.Result{}, nil
-					}
-					ctxlog.Debug(ctx, "Error deleting buildRun.", namespace, request.Namespace, name, &buildRunSucceeded[i].Name, deleteError, deleteBuildRunErr)
-					return reconcile.Result{}, nil
+				err := r.client.Delete(ctx, &buildRunSucceeded[i], &client.DeleteOptions{})
+				if err != nil && !apierrors.IsNotFound(err) {
+					ctxlog.Debug(ctx, "Error deleting buildRun.", namespace, request.Namespace, name, &buildRunSucceeded[i].Name, "error", err)
+					return reconcile.Result{}, err
 				}
 			}
 		}
@@ -111,18 +110,15 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 	if b.Spec.Retention.FailedLimit != nil {
 		if len(buildRunFailed) > int(*b.Spec.Retention.FailedLimit) {
 			sort.Slice(buildRunFailed, func(i, j int) bool {
-				return buildRunFailed[i].Status.CompletionTime.Before(buildRunFailed[j].Status.CompletionTime)
+				return buildRunFailed[i].ObjectMeta.CreationTimestamp.Before(&buildRunFailed[j].ObjectMeta.CreationTimestamp)
 			})
 			lenOfList := len(buildRunFailed)
-			for i := 0; lenOfList-i > int(*b.Spec.Retention.FailedLimit); i += 1 {
+			for i := 0; lenOfList-i > int(*b.Spec.Retention.FailedLimit); i++ {
 				ctxlog.Info(ctx, "Deleting failed buildrun as cleanup limit has been reached.", namespace, request.Namespace, name, buildRunFailed[i].Name)
-				deleteBuildRunErr := r.client.Delete(ctx, &buildRunFailed[i], &client.DeleteOptions{})
-				if deleteBuildRunErr != nil {
-					if apierrors.IsNotFound(deleteBuildRunErr) {
-						return reconcile.Result{}, nil
-					}
-					ctxlog.Debug(ctx, "Error deleting buildRun.", namespace, request.Namespace, name, buildRunFailed[i].Name, deleteError, deleteBuildRunErr)
-					return reconcile.Result{}, nil
+				err := r.client.Delete(ctx, &buildRunFailed[i], &client.DeleteOptions{})
+				if err != nil && !apierrors.IsNotFound(err) {
+					ctxlog.Debug(ctx, "Error deleting buildRun.", namespace, request.Namespace, name, &buildRunFailed[i].Name, "error", err)
+					return reconcile.Result{}, err
 				}
 			}
 		}

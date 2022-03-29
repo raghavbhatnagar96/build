@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package build_limit_cleanup
+package buildlimitcleanup
 
 import (
 	"context"
@@ -12,12 +12,9 @@ import (
 	"github.com/shipwright-io/build/pkg/config"
 	"github.com/shipwright-io/build/pkg/ctxlog"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -27,20 +24,15 @@ import (
 )
 
 const (
-	namespace   string = "namespace"
-	name        string = "name"
-	deleteError string = "error"
+	namespace string = "namespace"
+	name      string = "name"
 )
 
-type setOwnerReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
-
-// Add creates a new Build Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(ctx context.Context, c *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContext(ctx, "build-limit-cleanup-controller")
-	return add(ctx, mgr, NewReconciler(c, mgr, controllerutil.SetControllerReference), c.Controllers.Build.MaxConcurrentReconciles)
+	return add(ctx, mgr, NewReconciler(c, mgr), c.Controllers.Build.MaxConcurrentReconciles)
 }
-
 func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxConcurrentReconciles int) error {
 	// Create the controller options
 	options := controller.Options{
@@ -64,7 +56,26 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			n := e.ObjectNew.(*buildv1alpha1.Build)
-			return n.Spec.Retention != nil && (n.Spec.Retention.FailedLimit != nil || n.Spec.Retention.SucceededLimit != nil)
+			o := e.ObjectOld.(*buildv1alpha1.Build)
+
+			/* Check to see if there are new retention parameters or whether the
+			limit values have decreased */
+			if o.Spec.Retention == nil && n.Spec.Retention != nil {
+				if n.Spec.Retention.FailedLimit != nil || n.Spec.Retention.SucceededLimit != nil {
+					return true
+				}
+			} else if n.Spec.Retention != nil && o.Spec.Retention != nil {
+				if n.Spec.Retention.FailedLimit != nil && o.Spec.Retention.FailedLimit == nil {
+					return true
+				} else if n.Spec.Retention.SucceededLimit != nil && o.Spec.Retention.SucceededLimit == nil {
+					return true
+				} else if n.Spec.Retention.FailedLimit != nil && o.Spec.Retention.FailedLimit != nil && int(*n.Spec.Retention.FailedLimit) < int(*o.Spec.Retention.FailedLimit) {
+					return true
+				} else if n.Spec.Retention.SucceededLimit != nil && o.Spec.Retention.SucceededLimit != nil && int(*n.Spec.Retention.SucceededLimit) < int(*o.Spec.Retention.SucceededLimit) {
+					return true
+				}
+			}
+			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			// Never reconcile on deletion, there is nothing we have to do
@@ -81,15 +92,16 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			n := e.ObjectNew.(*buildv1alpha1.BuildRun)
 			o := e.ObjectOld.(*buildv1alpha1.BuildRun)
+			// check if Buildrun is related to a build
+			if n.Spec.BuildRef.Name == "" {
+				return false
+			}
 			oldCondition := o.Status.GetCondition(buildv1alpha1.Succeeded)
 			newCondition := n.Status.GetCondition(buildv1alpha1.Succeeded)
 			if oldCondition != nil && newCondition != nil {
 				if (oldCondition.Status == corev1.ConditionUnknown) &&
 					(newCondition.Status == corev1.ConditionFalse || newCondition.Status == corev1.ConditionTrue) {
-					if n.Status.BuildSpec != nil && n.Status.BuildSpec.Retention != nil &&
-						(n.Status.BuildSpec.Retention.FailedLimit != nil || n.Status.BuildSpec.Retention.SucceededLimit != nil) {
-						return true
-					}
+					return true
 				}
 			}
 			return false
@@ -108,10 +120,6 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 	// Watch for changes to resource BuildRun
 	return c.Watch(&source.Kind{Type: &buildv1alpha1.BuildRun{}}, handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
 		buildRun := o.(*buildv1alpha1.BuildRun)
-		// check if Buildrun is related to a build
-		if buildRun.Spec.BuildRef.Name == "" {
-			return []reconcile.Request{}
-		}
 
 		return []reconcile.Request{
 			{
